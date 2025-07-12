@@ -11,13 +11,14 @@ const Index = () => {
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [celebration, setCelebration] = useState({ isVisible: false, message: '' });
+  const [handPosition, setHandPosition] = useState<{ x: number; y: number } | null>(null);
   const { toast } = useToast();
 
   const handleProblemChange = useCallback((answer: number) => {
     setCurrentAnswer(answer);
   }, []);
 
-  const handleBubbleClick = useCallback((value: number, isCorrect: boolean) => {
+  const handleBubbleCollision = useCallback((value: number, isCorrect: boolean) => {
     if (isCorrect) {
       const newScore = score + 10 + (streak * 2);
       const newStreak = streak + 1;
@@ -63,9 +64,8 @@ const Index = () => {
     }
   }, [score, streak, toast]);
 
-  const handleMotionDetected = useCallback((intensity: number) => {
-    // Motion detection could influence the game in future versions
-    console.log('Motion detected:', intensity);
+  const handleHandDetected = useCallback((x: number, y: number) => {
+    setHandPosition({ x, y });
   }, []);
 
   const handleCelebrationComplete = useCallback(() => {
@@ -73,76 +73,77 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="game-container">
-      {/* Header */}
-      <header className="flex justify-between items-center p-6 bg-surface border-b-2 border-primary/20">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-            MathMotion
-          </h1>
-          <p className="text-text-muted">Learning through movement!</p>
-        </div>
-        
-        <div className="flex items-center gap-6 text-sm">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-primary">{score}</div>
-            <div className="text-text-muted">Score</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-success">{streak}</div>
-            <div className="text-text-muted">Streak</div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Camera Background */}
+      <CameraMotion 
+        isFullscreen={true}
+        onHandDetected={handleHandDetected}
+        className="absolute inset-0"
+      />
+
+      {/* AI Assistant Sidebar */}
+      <AIAssistant 
+        className="fixed left-0 top-0 bottom-0 w-80 z-20 bg-background/95 backdrop-blur-md" 
+      />
 
       {/* Main Game Area */}
-      <div className="flex h-[calc(100vh-100px)]">
-        {/* AI Assistant Sidebar */}
-        <AIAssistant className="shrink-0" />
+      <div className="ml-80 relative min-h-screen z-10">
+        {/* Header */}
+        <header className="relative z-30 bg-background/80 backdrop-blur-md border-b border-card-border/50 p-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">MathMotion</h1>
+              <p className="text-text-muted">Move your hand to touch the right answer!</p>
+            </div>
+            
+            <div className="flex items-center gap-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">{score}</div>
+                <div className="text-sm text-text-muted">Score</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-motion">{streak}</div>
+                <div className="text-sm text-text-muted">Streak</div>
+              </div>
+            </div>
+          </div>
+        </header>
 
-        {/* Game Play Area */}
-        <div className="flex-1 flex flex-col relative">
+        {/* Game Content */}
+        <div className="relative z-10 p-8">
           {/* Math Problem Display */}
-          <div className="flex-1 flex items-center justify-center p-8">
+          <div className="flex justify-center mb-8">
             <MathDisplay 
               onProblemChange={handleProblemChange}
-              className="max-w-2xl w-full"
+              className="max-w-2xl bg-background/90 backdrop-blur-md rounded-lg"
             />
           </div>
 
           {/* Floating Answer Bubbles */}
-          <FloatingBubbles
+          <FloatingBubbles 
             correctAnswer={currentAnswer}
-            onBubbleClick={handleBubbleClick}
-            className="absolute inset-0"
-          />
-
-          {/* Celebration Overlay */}
-          <Celebration
-            isVisible={celebration.isVisible}
-            message={celebration.message}
-            onComplete={handleCelebrationComplete}
-            className="absolute inset-0"
+            onBubbleCollision={handleBubbleCollision}
+            handPosition={handPosition}
+            className="z-20"
           />
         </div>
 
-        {/* Camera & Motion Detection */}
-        <div className="w-80 shrink-0 bg-surface border-l-2 border-motion/20">
-          <CameraMotion 
-            onMotionDetected={handleMotionDetected}
-            className="h-full"
-          />
-        </div>
+        {/* Celebration Overlay */}
+        <Celebration
+          isVisible={celebration.isVisible}
+          message={celebration.message}
+          onComplete={handleCelebrationComplete}
+          className="fixed inset-0 z-40"
+        />
+
+        {/* Instructions Footer */}
+        <footer className="relative z-30 bg-background/80 backdrop-blur-md border-t border-card-border/50 p-4">
+          <div className="text-center text-sm text-text-muted">
+            <p className="mb-2">🎯 <strong>How to Play:</strong> Move your hand in front of the camera to touch the correct answer bubble!</p>
+            <p>🏃‍♀️ The camera detects your hand movement - no clicking required!</p>
+          </div>
+        </footer>
       </div>
-
-      {/* Instructions Footer */}
-      <footer className="bg-surface border-t-2 border-primary/20 p-4 text-center">
-        <p className="text-text-muted text-sm">
-          <span className="font-semibold text-primary">Move your body</span> to help your brain think! 
-          <span className="font-semibold text-motion ml-4">Wave at bubbles</span> to select answers.
-          <span className="font-semibold text-success ml-4">Keep moving</span> for better focus!
-        </p>
-      </footer>
     </div>
   );
 };

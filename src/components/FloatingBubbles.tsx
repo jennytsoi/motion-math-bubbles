@@ -12,11 +12,12 @@ interface Bubble {
 
 interface FloatingBubblesProps {
   correctAnswer: number;
-  onBubbleClick: (value: number, isCorrect: boolean) => void;
+  onBubbleCollision: (value: number, isCorrect: boolean) => void;
+  handPosition?: { x: number; y: number } | null;
   className?: string;
 }
 
-export const FloatingBubbles = ({ correctAnswer, onBubbleClick, className }: FloatingBubblesProps) => {
+export const FloatingBubbles = ({ correctAnswer, onBubbleCollision, handPosition, className }: FloatingBubblesProps) => {
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
 
   const generateBubbles = useCallback(() => {
@@ -55,10 +56,10 @@ export const FloatingBubbles = ({ correctAnswer, onBubbleClick, className }: Flo
     generateBubbles();
   }, [generateBubbles]);
 
-  const handleBubbleClick = (bubble: Bubble) => {
-    onBubbleClick(bubble.value, bubble.isCorrect);
+  const handleBubbleCollision = (bubble: Bubble) => {
+    onBubbleCollision(bubble.value, bubble.isCorrect);
     
-    // Remove the clicked bubble and regenerate after a delay
+    // Remove the collided bubble and regenerate after a delay
     setBubbles(prev => prev.filter(b => b.id !== bubble.id));
     
     if (bubble.isCorrect) {
@@ -67,13 +68,41 @@ export const FloatingBubbles = ({ correctAnswer, onBubbleClick, className }: Flo
     }
   };
 
+  // Check for hand-bubble collisions
+  useEffect(() => {
+    if (!handPosition) return;
+
+    const checkCollisions = () => {
+      bubbles.forEach(bubble => {
+        const bubbleX = bubble.x;
+        const bubbleY = bubble.y;
+        const handX = handPosition.x;
+        const handY = handPosition.y;
+
+        // Calculate distance between hand and bubble center
+        const distance = Math.sqrt(
+          Math.pow(handX - bubbleX, 2) + Math.pow(handY - bubbleY, 2)
+        );
+
+        // Collision threshold (adjust based on bubble size)
+        const collisionThreshold = 12; // Approximately 12% of screen size
+
+        if (distance < collisionThreshold) {
+          handleBubbleCollision(bubble);
+        }
+      });
+    };
+
+    checkCollisions();
+  }, [handPosition, bubbles]);
+
   return (
     <div className={cn("absolute inset-0 pointer-events-none", className)}>
       {bubbles.map((bubble) => (
         <div
           key={bubble.id}
           className={cn(
-            "answer-bubble pointer-events-auto",
+            "answer-bubble pointer-events-none cursor-none",
             `variant-${bubble.variant}`,
             bubble.isCorrect && "correct",
             "w-24 h-24 absolute"
@@ -83,7 +112,6 @@ export const FloatingBubbles = ({ correctAnswer, onBubbleClick, className }: Flo
             top: `${bubble.y}%`,
             animationDelay: `${Math.random() * 2}s`,
           }}
-          onClick={() => handleBubbleClick(bubble)}
         >
           <span className="bubble-text text-background">
             {bubble.value}
